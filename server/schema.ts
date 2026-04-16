@@ -1,4 +1,5 @@
-import { pgTable, uuid, text, integer, jsonb, timestamp, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, jsonb, timestamp, boolean, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const accounts = pgTable("accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -42,6 +43,7 @@ export const runs = pgTable("runs", {
 }, (t) => [
   index("idx_runs_suite").on(t.suiteId),
   index("idx_runs_suite_started").on(t.suiteId, t.startedAt),
+  check("chk_runs_status", sql`${t.status} IN ('running', 'completed', 'failed')`),
 ]);
 
 export const runResults = pgTable("run_results", {
@@ -65,6 +67,7 @@ export const runResults = pgTable("run_results", {
 }, (t) => [
   index("idx_run_results_run").on(t.runId),
   index("idx_run_results_test_case").on(t.testCaseId),
+  check("chk_run_results_status", sql`${t.status} IN ('pending', 'running', 'completed', 'failed')`),
 ]);
 
 export const notes = pgTable("notes", {
@@ -76,6 +79,7 @@ export const notes = pgTable("notes", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("idx_notes_result").on(t.runResultId),
+  check("chk_notes_layer", sql`${t.layer} IN ('intent', 'behavioral_summary', 'node_details') OR ${t.layer} IS NULL`),
 ]);
 
 export const llmCalls = pgTable("llm_calls", {
@@ -95,4 +99,5 @@ export const llmCalls = pgTable("llm_calls", {
 }, (t) => [
   index("idx_llm_calls_result").on(t.runResultId),
   index("idx_llm_calls_stage").on(t.runResultId, t.stage),
+  check("chk_llm_calls_stage", sql`${t.stage} IN ('narrator', 'synthesizer', 'classifier')`),
 ]);
