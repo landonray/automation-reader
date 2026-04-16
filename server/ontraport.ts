@@ -32,19 +32,33 @@ export interface AutomationListItem {
 }
 
 export async function listAutomations(creds: OntraportCredentials): Promise<AutomationListItem[]> {
-  const response = await fetch(
-    `${ONTRAPORT_BASE}/CampaignBuilderItems?listFields=id,name,pause&sort=name&sortDir=asc&range=250`,
-    { headers: headers(creds) },
-  );
-  if (!response.ok) throw new Error(`Ontraport API error: ${response.status}`);
-  const data = await response.json();
-  const items = Array.isArray(data.data) ? data.data : [];
-  return items.map((item: any) => ({
-    id: String(item.id),
-    name: item.name || `Automation #${item.id}`,
-    status: item.pause === "0" ? "published" : "paused",
-    nodeCount: 0,
-  }));
+  const allItems: AutomationListItem[] = [];
+  const PAGE_SIZE = 250;
+  let start = 0;
+
+  while (true) {
+    const response = await fetch(
+      `${ONTRAPORT_BASE}/CampaignBuilderItems?listFields=id,name,pause&sort=name&sortDir=asc&start=${start}&range=${PAGE_SIZE}`,
+      { headers: headers(creds) },
+    );
+    if (!response.ok) throw new Error(`Ontraport API error: ${response.status}`);
+    const data = await response.json();
+    const items = Array.isArray(data.data) ? data.data : [];
+
+    for (const item of items) {
+      allItems.push({
+        id: String(item.id),
+        name: item.name || `Automation #${item.id}`,
+        status: item.pause === "0" ? "published" : "paused",
+        nodeCount: 0,
+      });
+    }
+
+    if (items.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+
+  return allItems;
 }
 
 export async function fetchAutomationJson(creds: OntraportCredentials, automationId: string): Promise<any> {

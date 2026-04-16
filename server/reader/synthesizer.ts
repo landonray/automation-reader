@@ -447,10 +447,42 @@ function buildSynthesisPrompt(
   lines.push(
     "## Chunk Narrations (detailed descriptions — use for accuracy)",
   );
+
+  const emitStructuredMeta = (chunk: Chunk) => {
+    const cn = (chunk as any).chunk_narration;
+    if (!cn) return;
+    const metaLines: string[] = [];
+    if (cn.entities_mentioned?.length > 0) {
+      metaLines.push(`  Entities (MUST appear in output): ${cn.entities_mentioned.join(", ")}`);
+    }
+    if (cn.wait_description) {
+      metaLines.push(`  Wait: ${cn.wait_description}`);
+    }
+    if (cn.condition_description) {
+      metaLines.push(`  Condition: ${cn.condition_description}`);
+    }
+    if (cn.goto_target_description) {
+      metaLines.push(`  GoTo: ${cn.goto_target_description}`);
+    }
+    if (cn.end_mode) {
+      const endDesc = cn.end_mode === "move_to_automation"
+        ? `Ends by moving contacts to "${cn.end_target || "another automation"}"`
+        : cn.end_mode === "exit"
+        ? "Ends by removing contacts from the automation"
+        : "Ends (contacts remain on the map)";
+      metaLines.push(`  Exit: ${endDesc}`);
+    }
+    if (metaLines.length > 0) {
+      lines.push("[Structured facts — use these for accuracy:]");
+      for (const ml of metaLines) lines.push(ml);
+    }
+  };
+
   for (const trigger of sortedTriggers) {
     const header = triggerHeaders.get(trigger.id) || trigger.id;
     lines.push(`### ${header} [${trigger.id}]`);
     if (trigger.narration) lines.push(trigger.narration);
+    emitStructuredMeta(trigger);
     if (trigger.goto_target_node) {
       lines.push(`Goto target: node ${trigger.goto_target_node}`);
     }
@@ -473,6 +505,7 @@ function buildSynthesisPrompt(
       const childCondNote = buildConditionForkNote(child, chunks);
       if (childCondNote) lines.push(childCondNote);
       if (child.narration) lines.push(child.narration);
+      emitStructuredMeta(child);
       if (child.sub_chunks.length > 0) {
         lines.push(`Sub-branches: ${child.sub_chunks.join(", ")}`);
       }
