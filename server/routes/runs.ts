@@ -97,6 +97,22 @@ router.get("/runs/:id/results/:resultId", async (req, res) => {
   }
 });
 
+// PUT /api/runs/:id — update run label
+router.put("/runs/:id", async (req, res) => {
+  try {
+    const { label } = req.body;
+    const [updated] = await db
+      .update(runs)
+      .set({ label: label ?? null })
+      .where(eq(runs.id, req.params.id))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "Run not found" });
+    return res.json(updated);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/runs/:id/stream — SSE stream for run progress
 router.get("/runs/:id/stream", (req, res) => {
   const runId = req.params.id;

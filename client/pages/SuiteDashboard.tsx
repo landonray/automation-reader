@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import { AutomationPicker } from "../components/AutomationPicker";
+import { useAppContext } from "../context/AppContext";
 
 export function SuiteDashboard() {
   const { suiteId } = useParams<{ suiteId: string }>();
   const navigate = useNavigate();
+  const { setCurrentSuite } = useAppContext();
   const [suite, setSuite] = useState<any>(null);
   const [runs, setRuns] = useState<any[]>([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -22,6 +24,11 @@ export function SuiteDashboard() {
       api.runs.list(suiteId).then(setRuns);
     }
   }, [suiteId]);
+
+  useEffect(() => {
+    if (suite) setCurrentSuite(suite);
+    return () => setCurrentSuite(null);
+  }, [suite]);
 
   if (!suite) return <div className="text-gray-500 p-8">Loading...</div>;
 

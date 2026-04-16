@@ -37,6 +37,8 @@ export const api = {
       request<any>(`/api/runs/${runId}/results/${resultId}`),
     getLlmCalls: (runId: string, resultId: string) =>
       request<any[]>(`/api/runs/${runId}/results/${resultId}/llm-calls`),
+    updateLabel: (id: string, label: string) =>
+      request<any>(`/api/runs/${id}`, { method: "PUT", body: JSON.stringify({ label }) }),
     stream: (runId: string) => new EventSource(`/api/runs/${runId}/stream`),
   },
   notes: {
