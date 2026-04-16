@@ -85,7 +85,7 @@ export function RunComparison({ baseRun, suiteId, onExit }: RunComparisonProps) 
   const [compareRunId, setCompareRunId] = useState<string>("");
   const [compareRun, setCompareRun] = useState<any>(null);
   const [loadingCompare, setLoadingCompare] = useState(false);
-  const [field, setField] = useState<"behavioralSummary" | "intent">("behavioralSummary");
+  const [field, setField] = useState<"behavioralSummary" | "intent" | "nodeDetails">("behavioralSummary");
 
   // Load all runs for this suite so the user can pick one to compare against
   useEffect(() => {
@@ -129,7 +129,18 @@ export function RunComparison({ baseRun, suiteId, onExit }: RunComparisonProps) 
     ])
   );
 
-  const fieldLabel = field === "behavioralSummary" ? "Behavioral Summary" : "Intent";
+  const fieldLabel = field === "behavioralSummary" ? "Behavioral Summary" : field === "intent" ? "Intent" : "Node Details";
+
+  function nodeDetailsToText(details: any): string {
+    if (!Array.isArray(details) || details.length === 0) return "(no node details)";
+    return details.map((layer: any) => {
+      const heading = layer.chunk_narration || layer.chunk_id || "";
+      const nodes = (layer.nodes || []).map((n: any) =>
+        `  ${n.label || n.id}: ${n.resolved_description || n.type || "-"}`
+      ).join("\n");
+      return heading + "\n" + nodes;
+    }).join("\n\n");
+  }
 
   return (
     <div className="space-y-4">
@@ -178,6 +189,16 @@ export function RunComparison({ baseRun, suiteId, onExit }: RunComparisonProps) 
                 }`}
               >
                 Intent
+              </button>
+              <button
+                onClick={() => setField("nodeDetails")}
+                className={`px-3 py-1 ${
+                  field === "nodeDetails"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Node Details
               </button>
             </div>
           )}
@@ -230,8 +251,16 @@ export function RunComparison({ baseRun, suiteId, onExit }: RunComparisonProps) 
             const name =
               base?.automationName || compare?.automationName || tcId;
 
-            const baseText = base ? base[field] || "" : "";
-            const compareText = compare ? compare[field] || "" : "";
+            const baseText = base
+              ? field === "nodeDetails"
+                ? nodeDetailsToText(base.nodeDetails)
+                : base[field] || ""
+              : "";
+            const compareText = compare
+              ? field === "nodeDetails"
+                ? nodeDetailsToText(compare.nodeDetails)
+                : compare[field] || ""
+              : "";
 
             return (
               <div key={tcId} className="bg-white rounded-lg border overflow-hidden">

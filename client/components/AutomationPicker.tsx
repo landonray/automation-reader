@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { api } from "../api";
+import { useAppContext } from "../context/AppContext";
 
 interface Props {
   accountId: string;
@@ -10,18 +11,11 @@ interface Props {
 }
 
 export function AutomationPicker({ accountId, suiteId, existingAutomationIds, onAdd, onClose }: Props) {
-  const [automations, setAutomations] = useState<any[]>([]);
+  const { automations, automationsLoading, refreshAutomations } = useAppContext();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-
-  useEffect(() => {
-    api.accounts.automations(accountId).then(list => {
-      setAutomations(list);
-      setLoading(false);
-    });
-  }, [accountId]);
+  const loading = automationsLoading;
 
   const filtered = automations.filter(a =>
     a.name.toLowerCase().includes(search.toLowerCase())
@@ -52,7 +46,17 @@ export function AutomationPicker({ accountId, suiteId, existingAutomationIds, on
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Add Automations</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Add Automations</h2>
+            <button
+              onClick={refreshAutomations}
+              disabled={loading}
+              className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+              title="Refresh automation list from Ontraport"
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
         </div>
 
