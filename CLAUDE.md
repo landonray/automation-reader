@@ -12,6 +12,7 @@ I am a product leader, not a developer. I understand architecture and product de
 - Database: Neon Postgres via DATABASE_URL environment variable — never create a local or alternative database
 - Auth: Google OAuth via environment variables — never implement a different auth system
 - All secrets come from environment variables — never hardcode credentials
+- Dev server port: 3010 (front end and API both served from this port). Port 3000 is often taken by another project on this machine, so always start Automation-Reader on 3010.
 
 # How to Start a Session
 - Read this CLAUDE.md fully before doing anything
