@@ -210,7 +210,7 @@ function buildNodeDetailsFromChunks(chunks: Chunk[]): NodeDetailLayer[] {
       id: nd.id,
       type: nd.type,
       label: nd.label,
-      resolved_description: "",
+      resolved_description: nd.label || nd.type,
       timing:
         nd.cumulative_elapsed.days > 0 ||
         nd.cumulative_elapsed.hours > 0 ||

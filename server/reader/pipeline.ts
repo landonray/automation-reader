@@ -20,11 +20,11 @@ export interface PipelineResult {
   validation: ReaderValidationReport;
   auditFindings: AuditFinding[];
   timing: {
-    enrichment_ms: number;
-    chunking_ms: number;
-    narration_ms: number;
-    synthesis_ms: number;
-    total_ms: number;
+    enrichment: number;
+    chunking: number;
+    narration: number;
+    synthesis: number;
+    total: number;
   };
   stats: {
     chunkCount: number;
@@ -155,11 +155,11 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     validation,
     auditFindings,
     timing: {
-      enrichment_ms,
-      chunking_ms,
-      narration_ms,
-      synthesis_ms,
-      total_ms,
+      enrichment: enrichment_ms,
+      chunking: chunking_ms,
+      narration: narration_ms,
+      synthesis: synthesis_ms,
+      total: total_ms,
     },
     stats: {
       chunkCount: narratedChunks.length,

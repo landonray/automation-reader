@@ -89,7 +89,7 @@ export async function executeRun(runId: string): Promise<void> {
           status: "completed",
           intent: pipelineResult.layers.intent,
           behavioralSummary: pipelineResult.layers.behavioral_summary,
-          nodeDetails: pipelineResult.chunks as any,
+          nodeDetails: pipelineResult.layers.node_details as any,
           chunkCount: pipelineResult.stats.chunkCount,
           narratorLlmCalls: pipelineResult.stats.narratorLlmCalls,
           narratorDeterministicCalls: pipelineResult.stats.narratorDeterministicCalls,

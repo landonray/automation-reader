@@ -218,6 +218,21 @@ export function RunDashboard() {
           {/* Spacer */}
           <div className="flex-1" />
 
+          {/* New Run */}
+          {run.suiteId && (
+            <button
+              onClick={async () => {
+                const label = prompt("Run label (optional):");
+                if (label === null) return;
+                const newRun = await api.runs.create(run.suiteId, label || undefined);
+                navigate(`/runs/${newRun.id}`);
+              }}
+              className="px-3 py-1 rounded text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+            >
+              New Run
+            </button>
+          )}
+
           {/* Compare button */}
           {!compareMode && run.suiteId && (
             <button

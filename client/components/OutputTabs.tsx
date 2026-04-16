@@ -29,31 +29,50 @@ function renderSummary(text: string): React.ReactNode {
   );
 }
 
-function renderNodeDetails(nodes: any[]): React.ReactNode {
-  if (!Array.isArray(nodes) || nodes.length === 0) {
+function renderNodeDetails(layers: any[]): React.ReactNode {
+  if (!Array.isArray(layers) || layers.length === 0) {
     return <div className="text-sm text-gray-500">No node details available</div>;
   }
 
   return (
-    <div className="overflow-auto">
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="border-b bg-gray-50">
-            <th className="text-left p-2 font-medium text-gray-600">Node</th>
-            <th className="text-left p-2 font-medium text-gray-600">Type</th>
-            <th className="text-left p-2 font-medium text-gray-600">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {nodes.map((node: any, i: number) => (
-            <tr key={i} className="border-b last:border-0">
-              <td className="p-2 font-mono text-xs">{node.name || node.id || `Node ${i + 1}`}</td>
-              <td className="p-2 text-gray-600">{node.type || "-"}</td>
-              <td className="p-2 text-gray-700">{node.description || node.summary || JSON.stringify(node)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      {layers.map((layer: any, li: number) => (
+        <div key={li} className="border rounded overflow-hidden">
+          {layer.chunk_narration && (
+            <div className="bg-gray-50 border-b px-3 py-2 text-xs text-gray-600 italic">
+              {layer.chunk_narration}
+            </div>
+          )}
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left p-2 font-medium text-gray-600">Node</th>
+                <th className="text-left p-2 font-medium text-gray-600">Type</th>
+                <th className="text-left p-2 font-medium text-gray-600">Description</th>
+                <th className="text-left p-2 font-medium text-gray-600">Timing</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(layer.nodes || []).map((node: any, ni: number) => (
+                <tr key={ni} className="border-b last:border-0">
+                  <td className="p-2 font-mono text-xs">{node.label || node.id || `Node ${ni + 1}`}</td>
+                  <td className="p-2 text-gray-600">{node.type || "-"}</td>
+                  <td className="p-2 text-gray-700">{node.resolved_description || "-"}</td>
+                  <td className="p-2 text-xs text-gray-500">
+                    {node.timing
+                      ? [
+                          node.timing.days > 0 && `${node.timing.days}d`,
+                          node.timing.hours > 0 && `${node.timing.hours}h`,
+                          node.timing.minutes > 0 && `${node.timing.minutes}m`,
+                        ].filter(Boolean).join(" ") || "-"
+                      : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }

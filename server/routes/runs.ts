@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db.js";
-import { runs, runResults } from "../schema.js";
+import { runs, runResults, testCases } from "../schema.js";
 import { initSSE, sendSSE } from "../sse.js";
 import { executeRun } from "../run-executor.js";
 
@@ -71,11 +71,20 @@ router.get("/runs/:id", async (req, res) => {
       .where(eq(runs.id, req.params.id));
     if (!run) return res.status(404).json({ error: "Run not found" });
 
-    const results = await db
-      .select()
+    const rawResults = await db
+      .select({
+        result: runResults,
+        automationName: testCases.automationName,
+      })
       .from(runResults)
+      .leftJoin(testCases, eq(runResults.testCaseId, testCases.id))
       .where(eq(runResults.runId, req.params.id))
       .orderBy(runResults.createdAt);
+
+    const results = rawResults.map((r) => ({
+      ...r.result,
+      automationName: r.automationName,
+    }));
 
     return res.json({ ...run, results });
   } catch (err: any) {
