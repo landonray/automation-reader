@@ -10,6 +10,10 @@ interface Result {
   errorMessage?: string;
   testCase?: { automationName?: string };
   automationName?: string;
+  validation?: {
+    passed: boolean;
+    issues: Array<{ severity: string; rule: string; message: string }>;
+  };
 }
 
 interface Props {
@@ -58,6 +62,19 @@ export function ResultsList({ results, selectedId, onSelect }: Props) {
               <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
                 {totalTime != null && <span>{(totalTime / 1000).toFixed(1)}s</span>}
                 {llmCalls > 0 && <span>{llmCalls} LLM calls</span>}
+                {r.validation && (
+                  r.validation.passed ? (
+                    <span className="inline-flex items-center gap-1 text-green-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      Valid
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-yellow-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+                      {r.validation.issues.filter(i => i.severity === "error").length}e / {r.validation.issues.filter(i => i.severity === "warning").length}w
+                    </span>
+                  )
+                )}
               </div>
             )}
             {r.status === "failed" && r.errorMessage && (

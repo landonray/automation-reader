@@ -5,7 +5,6 @@ import { useAppContext } from "../context/AppContext";
 import { useSSE } from "../hooks/useSSE";
 import { ResultsList } from "../components/ResultsList";
 import { OutputTabs } from "../components/OutputTabs";
-import { NotesPanel } from "../components/NotesPanel";
 import { ValidationReport } from "../components/ValidationReport";
 import { PipelineStats } from "../components/PipelineStats";
 import { LlmCallLog } from "../components/LlmCallLog";
@@ -317,18 +316,14 @@ export function RunDashboard() {
         <div className="space-y-4">
           {selectedResultId && fullResult ? (
             <>
-              {/* Output tabs */}
+              {/* Output tabs with per-layer notes */}
               <div className="bg-white rounded-lg border">
                 <OutputTabs
                   intent={fullResult.intent}
                   behavioralSummary={fullResult.behavioralSummary}
                   nodeDetails={fullResult.nodeDetails}
+                  runResultId={selectedResultId}
                 />
-              </div>
-
-              {/* Notes panel */}
-              <div className="bg-white rounded-lg border p-4">
-                <NotesPanel runResultId={selectedResultId} />
               </div>
 
               {/* Collapsible sections */}

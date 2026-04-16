@@ -4,14 +4,16 @@ import { api } from "../api";
 interface Note {
   id: string;
   content: string;
+  layer?: string;
   createdAt: string;
 }
 
 interface Props {
   runResultId: string;
+  layer?: "intent" | "behavioral_summary" | "node_details";
 }
 
-export function NotesPanel({ runResultId }: Props) {
+export function NotesPanel({ runResultId, layer }: Props) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [newContent, setNewContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -24,13 +26,13 @@ export function NotesPanel({ runResultId }: Props) {
 
   async function loadNotes() {
     const data = await api.notes.list(runResultId);
-    setNotes(data);
+    setNotes(layer ? data.filter((n: any) => n.layer === layer) : data);
   }
 
   async function handleCreate() {
     if (!newContent.trim()) return;
     setSaving(true);
-    await api.notes.create({ runResultId, content: newContent.trim() });
+    await api.notes.create({ runResultId, content: newContent.trim(), layer });
     setNewContent("");
     await loadNotes();
     setSaving(false);

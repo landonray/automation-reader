@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { NotesPanel } from "./NotesPanel";
 
 interface Props {
   intent: string | null;
   behavioralSummary: string | null;
   nodeDetails: any[] | null;
+  runResultId?: string;
 }
 
 type Tab = "intent" | "summary" | "details";
@@ -56,7 +58,7 @@ function renderNodeDetails(nodes: any[]): React.ReactNode {
   );
 }
 
-export function OutputTabs({ intent, behavioralSummary, nodeDetails }: Props) {
+export function OutputTabs({ intent, behavioralSummary, nodeDetails, runResultId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("intent");
 
   const tabs: { key: Tab; label: string }[] = [
@@ -85,11 +87,24 @@ export function OutputTabs({ intent, behavioralSummary, nodeDetails }: Props) {
         </div>
       </div>
       <div className="p-6">
-        {activeTab === "intent" &&
-          (intent ? renderIntent(intent) : <div className="text-sm text-gray-500">No intent data</div>)}
-        {activeTab === "summary" &&
-          (behavioralSummary ? renderSummary(behavioralSummary) : <div className="text-sm text-gray-500">No summary data</div>)}
-        {activeTab === "details" && renderNodeDetails(nodeDetails || [])}
+        {activeTab === "intent" && (
+          <>
+            {intent ? renderIntent(intent) : <div className="text-sm text-gray-500">No intent data</div>}
+            {runResultId && <NotesPanel runResultId={runResultId} layer="intent" />}
+          </>
+        )}
+        {activeTab === "summary" && (
+          <>
+            {behavioralSummary ? renderSummary(behavioralSummary) : <div className="text-sm text-gray-500">No summary data</div>}
+            {runResultId && <NotesPanel runResultId={runResultId} layer="behavioral_summary" />}
+          </>
+        )}
+        {activeTab === "details" && (
+          <>
+            {renderNodeDetails(nodeDetails || [])}
+            {runResultId && <NotesPanel runResultId={runResultId} layer="node_details" />}
+          </>
+        )}
       </div>
     </div>
   );
