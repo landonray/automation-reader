@@ -4,6 +4,9 @@ import { runs, testSuites, testCases, runResults, llmCalls, accounts } from "./s
 import { runPipeline } from "./reader/pipeline.js";
 import { ontraportHeaders } from "./ontraport.js";
 import { notifyRunProgress } from "./routes/runs.js";
+import { runWithConcurrency } from "./reader/concurrency.js";
+
+const AUTOMATION_CONCURRENCY = 10;
 
 export async function executeRun(runId: string): Promise<void> {
   // 1. Look up the run
@@ -61,93 +64,97 @@ export async function executeRun(runId: string): Promise<void> {
 
   notifyRunProgress(runId, "run_started", { runId, total });
 
-  // 5. Process each test case sequentially
+  // 5. Process test cases in parallel with bounded concurrency
   try {
-  for (let i = 0; i < cases.length; i++) {
-    const tc = cases[i];
-    const result = resultByTestCase.get(tc.id);
-    if (!result) continue;
+  const indexedCases = cases.map((tc, i) => ({ tc, i }));
+  await runWithConcurrency(
+    indexedCases,
+    async ({ tc, i }) => {
+      const result = resultByTestCase.get(tc.id);
+      if (!result) return;
 
-    notifyRunProgress(runId, "result_started", {
-      runId,
-      index: i,
-      total,
-      testCaseId: tc.id,
-      automationName: tc.automationName,
-    });
-
-    try {
-      const pipelineResult = await runPipeline({
-        automationJson: tc.rawJson,
-        ontraportHeaders: headers,
+      notifyRunProgress(runId, "result_started", {
+        runId,
+        index: i,
+        total,
+        testCaseId: tc.id,
+        automationName: tc.automationName,
       });
 
-      // 6. Update result row with pipeline output
-      await db
-        .update(runResults)
-        .set({
-          status: "completed",
-          intent: pipelineResult.layers.intent,
-          behavioralSummary: pipelineResult.layers.behavioral_summary,
-          nodeDetails: pipelineResult.layers.node_details as any,
-          chunkCount: pipelineResult.stats.chunkCount,
-          narratorLlmCalls: pipelineResult.stats.narratorLlmCalls,
-          narratorDeterministicCalls: pipelineResult.stats.narratorDeterministicCalls,
-          synthesizerLlmCalls: pipelineResult.stats.synthesizerLlmCalls,
-          timing: pipelineResult.timing as any,
-          validation: pipelineResult.validation as any,
-          enrichmentCache: pipelineResult.enrichmentCache as any,
-          chunks: pipelineResult.chunks as any,
-        })
-        .where(eq(runResults.id, result.id));
+      try {
+        const pipelineResult = await runPipeline({
+          automationJson: tc.rawJson,
+          ontraportHeaders: headers,
+        });
 
-      // 7. Log LLM call records
-      if (pipelineResult.llmCallRecords.length > 0) {
-        await db.insert(llmCalls).values(
-          pipelineResult.llmCallRecords.map((record) => ({
-            runResultId: result.id,
-            stage: record.stage,
-            chunkId: record.chunkId,
-            systemPrompt: record.systemPrompt,
-            userPrompt: record.userPrompt,
-            response: record.response,
-            finishReason: record.finishReason,
-            promptTokens: record.promptTokens ?? null,
-            completionTokens: record.completionTokens ?? null,
-            latencyMs: record.latencyMs,
-            wasRetry: record.wasRetry,
-          })),
-        );
+        // 6. Update result row with pipeline output
+        await db
+          .update(runResults)
+          .set({
+            status: "completed",
+            intent: pipelineResult.layers.intent,
+            behavioralSummary: pipelineResult.layers.behavioral_summary,
+            nodeDetails: pipelineResult.layers.node_details as any,
+            chunkCount: pipelineResult.stats.chunkCount,
+            narratorLlmCalls: pipelineResult.stats.narratorLlmCalls,
+            narratorDeterministicCalls: pipelineResult.stats.narratorDeterministicCalls,
+            synthesizerLlmCalls: pipelineResult.stats.synthesizerLlmCalls,
+            timing: pipelineResult.timing as any,
+            validation: pipelineResult.validation as any,
+            enrichmentCache: pipelineResult.enrichmentCache as any,
+            chunks: pipelineResult.chunks as any,
+          })
+          .where(eq(runResults.id, result.id));
+
+        // 7. Log LLM call records
+        if (pipelineResult.llmCallRecords.length > 0) {
+          await db.insert(llmCalls).values(
+            pipelineResult.llmCallRecords.map((record) => ({
+              runResultId: result.id,
+              stage: record.stage,
+              chunkId: record.chunkId,
+              systemPrompt: record.systemPrompt,
+              userPrompt: record.userPrompt,
+              response: record.response,
+              finishReason: record.finishReason,
+              promptTokens: record.promptTokens ?? null,
+              completionTokens: record.completionTokens ?? null,
+              latencyMs: record.latencyMs,
+              wasRetry: record.wasRetry,
+            })),
+          );
+        }
+
+        notifyRunProgress(runId, "result_completed", {
+          runId,
+          index: i,
+          total,
+          testCaseId: tc.id,
+          automationName: tc.automationName,
+          resultId: result.id,
+        });
+      } catch (err: any) {
+        // Mark this result as failed but continue with remaining test cases
+        await db
+          .update(runResults)
+          .set({
+            status: "failed",
+            errorMessage: err.message ?? "Unknown error",
+          })
+          .where(eq(runResults.id, result.id));
+
+        notifyRunProgress(runId, "result_failed", {
+          runId,
+          index: i,
+          total,
+          testCaseId: tc.id,
+          automationName: tc.automationName,
+          error: err.message,
+        });
       }
-
-      notifyRunProgress(runId, "result_completed", {
-        runId,
-        index: i,
-        total,
-        testCaseId: tc.id,
-        automationName: tc.automationName,
-        resultId: result.id,
-      });
-    } catch (err: any) {
-      // Mark this result as failed but continue with remaining test cases
-      await db
-        .update(runResults)
-        .set({
-          status: "failed",
-          errorMessage: err.message ?? "Unknown error",
-        })
-        .where(eq(runResults.id, result.id));
-
-      notifyRunProgress(runId, "result_failed", {
-        runId,
-        index: i,
-        total,
-        testCaseId: tc.id,
-        automationName: tc.automationName,
-        error: err.message,
-      });
-    }
-  }
+    },
+    AUTOMATION_CONCURRENCY,
+  );
 
   // 8. Mark run as completed
   await db
