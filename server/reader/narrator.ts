@@ -317,7 +317,7 @@ function narrateWarningChunk(chunk: Chunk, cache: EnrichmentCache): string {
 // ChunkNarration builder
 // ============================================================
 
-function buildChunkNarrationMeta(chunk: Chunk, prose: string, isDeterministic: boolean, cache: EnrichmentCache): ChunkNarration {
+function buildChunkNarrationMeta(chunk: Chunk, prose: string, isDeterministic: boolean, cache: EnrichmentCache, allChunks: Chunk[]): ChunkNarration {
   const entities: string[] = [];
   for (const nd of chunk.node_details) {
     const res = nd.resource || {};
@@ -368,7 +368,21 @@ function buildChunkNarrationMeta(chunk: Chunk, prose: string, isDeterministic: b
     }
   }
   if (chunk.goto_target_node) {
-    gotoTargetDescription = chunk.goto_target_node;
+    const targetChunk = allChunks.find(c =>
+      c.nodes.includes(chunk.goto_target_node!)
+    );
+    if (targetChunk) {
+      const triggerChunks = allChunks.filter(c => c.entry_type === "trigger");
+      const triggerIndex = triggerChunks.indexOf(targetChunk);
+      if (triggerIndex >= 0) {
+        gotoTargetDescription = `they are routed via GoTo into Trigger ${triggerIndex + 1}'s path`;
+      } else {
+        const targetLabel = targetChunk.node_details[0]?.label || targetChunk.id;
+        gotoTargetDescription = `they are routed via GoTo to the "${targetLabel}" step`;
+      }
+    } else {
+      gotoTargetDescription = `GoTo targeting node ${chunk.goto_target_node}`;
+    }
   }
   if (chunk.is_fork_parent && chunk.fork_type === "condition") {
     conditionDescription = resolveConditionForDeterministic(chunk, cache) || undefined;
@@ -651,7 +665,7 @@ export async function narrateChunks(
 
   const narratedChunks = chunks.map((chunk) => {
     const result = narrationMap.get(chunk.id) || { narration: "", isDeterministic: false };
-    const chunkNarration = buildChunkNarrationMeta(chunk, result.narration, result.isDeterministic, enrichmentCache);
+    const chunkNarration = buildChunkNarrationMeta(chunk, result.narration, result.isDeterministic, enrichmentCache, chunks);
     return {
       ...chunk,
       narration: result.narration,
