@@ -21,3 +21,12 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Worktrees
+.worktrees/
+
+# Uploads
+.uploads/
+
+# Drizzle migrations
+drizzle/
