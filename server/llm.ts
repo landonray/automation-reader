@@ -79,3 +79,10 @@ export async function askLLMJson<T>(
   }
   return JSON.parse(jsonMatch[0]) as T;
 }
+
+if (!LLM_GATEWAY_API_KEY) {
+  console.warn(
+    "WARNING: LLM_GATEWAY_API_KEY is not set. All LLM calls (narrator, synthesizer) will fail. " +
+    "Set this in your .env file before running automations."
+  );
+}
