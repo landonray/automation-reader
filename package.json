@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "node --env-file=.env --import tsx server/index.ts",
     "build": "vite build",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

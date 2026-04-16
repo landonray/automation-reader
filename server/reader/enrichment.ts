@@ -5,6 +5,7 @@ const ONTRAPORT_BASE = "https://api.ontraport.com/1";
 export interface OntraportHeaders {
   "Api-Appid": string;
   "Api-Key": string;
+  [key: string]: string;
 }
 
 class MudCounter {
@@ -146,13 +147,13 @@ function scanRuleEditorStatements(ruleEditor: any, collected: CollectedIds): voi
         const a1Str = stmtData.a1 != null ? String(stmtData.a1).trim() : "";
         const a0Target = EVENT_TYPE_A0_ENTITY[eventType];
         if (a0Target && a0Str) {
-          collected[a0Target].add(a0Str);
+          (collected[a0Target] as Set<string>).add(a0Str);
         } else if (a0Str && !EVENT_TYPE_A0_ENUM.has(eventType)) {
           collected.fieldIds.add(a0Str);
         }
         const a1Target = EVENT_TYPE_A1_ENTITY[eventType];
         if (a1Target && a1Str && a1Str !== "0") {
-          collected[a1Target].add(a1Str);
+          (collected[a1Target] as Set<string>).add(a1Str);
         }
         if (stmtData.a2 && typeof stmtData.a2 === "string" && stmtData.a2.trim()) {
           collected.fieldValueIds.add(stmtData.a2);
