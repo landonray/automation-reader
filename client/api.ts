@@ -26,7 +26,7 @@ export const api = {
     addTestCases: (suiteId: string, automationIds: string[]) =>
       request<any>(`/api/suites/${suiteId}/test-cases`, { method: "POST", body: JSON.stringify({ automationIds }) }),
     removeTestCase: (id: string) =>
-      request<any>(`/api/suites/test-cases/${id}`, { method: "DELETE" }),
+      request<any>(`/api/test-cases/${id}`, { method: "DELETE" }),
   },
   runs: {
     list: (suiteId: string) => request<any[]>(`/api/runs?suite_id=${suiteId}`),

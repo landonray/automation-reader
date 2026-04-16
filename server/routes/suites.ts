@@ -123,8 +123,8 @@ router.post("/suites/:id/test-cases", async (req, res) => {
   }
 });
 
-// DELETE /api/suites/test-cases/:id
-router.delete("/suites/test-cases/:id", async (req, res) => {
+// DELETE /api/test-cases/:id — spec requires this at top-level, not nested under /suites
+router.delete("/test-cases/:id", async (req, res) => {
   try {
     await db.delete(testCases).where(eq(testCases.id, req.params.id));
     return res.status(204).send();
