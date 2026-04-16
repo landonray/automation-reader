@@ -36,6 +36,28 @@ export interface PipelineResult {
   isPublished: boolean;
 }
 
+function normalizeEdges(rawEdges: any[]): any[] {
+  if (!Array.isArray(rawEdges)) return [];
+  return rawEdges.map((e, i) => {
+    const source = e.source ?? e.from;
+    const target = e.target ?? e.to;
+    return {
+      ...e,
+      id: e.id ?? `e_${source}_${target}_${i}`,
+      source: source != null ? String(source) : source,
+      target: target != null ? String(target) : target,
+    };
+  });
+}
+
+function normalizeNodes(rawNodes: any[]): any[] {
+  if (!Array.isArray(rawNodes)) return [];
+  return rawNodes.map((n) => ({
+    ...n,
+    id: n.id != null ? String(n.id) : n.id,
+  }));
+}
+
 function parseCampaignData(rawData: any): { campaignData: CampaignData; rawForPublicationStatus: any } {
   // Shape 1: Ontraport API response format — rawData.data contains automation objects with a campaign field
   if (rawData.data) {
@@ -66,8 +88,8 @@ function parseCampaignData(rawData: any): { campaignData: CampaignData; rawForPu
 
     return {
       campaignData: {
-        nodes,
-        edges,
+        nodes: normalizeNodes(nodes),
+        edges: normalizeEdges(edges),
         rawAutomationData: rawData,
       },
       rawForPublicationStatus: rawData,
@@ -78,8 +100,8 @@ function parseCampaignData(rawData: any): { campaignData: CampaignData; rawForPu
   if (rawData.nodes && rawData.edges) {
     return {
       campaignData: {
-        nodes: rawData.nodes,
-        edges: rawData.edges,
+        nodes: normalizeNodes(rawData.nodes),
+        edges: normalizeEdges(rawData.edges),
         rawAutomationData: rawData,
       },
       rawForPublicationStatus: rawData,
