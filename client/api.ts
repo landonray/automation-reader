@@ -49,4 +49,17 @@ export const api = {
       request<any>(`/api/notes/${id}`, { method: "PUT", body: JSON.stringify({ content }) }),
     delete: (id: string) => request<any>(`/api/notes/${id}`, { method: "DELETE" }),
   },
+  prompts: {
+    list: () => request<any[]>("/api/prompts"),
+    versions: (key: string) => request<any>(`/api/prompts/${key}/versions`),
+    save: (key: string, content: string, note?: string) =>
+      request<any>(`/api/prompts/${key}/versions`, {
+        method: "POST",
+        body: JSON.stringify({ content, note }),
+      }),
+    restore: (key: string, versionId: string) =>
+      request<any>(`/api/prompts/${key}/restore/${versionId}`, { method: "POST" }),
+    reset: (key: string) =>
+      request<any>(`/api/prompts/${key}/reset`, { method: "POST" }),
+  },
 };

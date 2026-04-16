@@ -7,6 +7,7 @@ import type {
   EnrichmentCache,
 } from "./types.js";
 import { runWithConcurrency } from "./concurrency.js";
+import { getResolvedPrompt } from "./prompt-loader.js";
 
 // ---------------------------------------------------------------------------
 // LLM Call Record — captures timing and prompt details for each LLM call
@@ -78,89 +79,9 @@ async function askLLMJsonWithRecord<T>(
   return JSON.parse(jsonMatch[0]) as T;
 }
 
-// ---------------------------------------------------------------------------
-// SYNTHESIS_RULES — shared accuracy / formatting rules for all prompts
-// ---------------------------------------------------------------------------
-
-const SYNTHESIS_RULES = `
-=== ACCURACY ===
-- NEVER invent entity names. If narrations say "unknown form/tag/field", carry that through.
-- NEVER generalize entity names. If a narration says "goal 'Tag is Applied' for 'VIP Customer'", write exactly that — NOT "a specific goal" or "a goal."
-- NEVER insert actions not present in narrations — especially waits. Only describe steps that explicitly appear.
-- NEVER use concurrent language ("all contacts", "simultaneously", "all paths") for condition or split forks.
-- Only attribute actions to the correct trigger path.
-- Accuracy > polish. Missing info = say unknown, never fabricate.
-
-=== ENTITY & TERMINOLOGY ===
-- Use specific resolved names from narrations: email subjects, tag names, field names, form names.
-- Goals referencing entities: "the goal 'Submits Form' named 'Order Page'" (use "named" to connect).
-- No raw node IDs, chunk IDs, operator codes, or bracket labels. Translate to natural language.
-
-=== BRANCHING ===
-- Condition forks: exclusive yes/no branching — each contact follows exactly ONE branch. NEVER use "all contacts", "simultaneously", or concurrent language.
-- Split tests: always include exact percentages. Each contact is randomly assigned to exactly ONE path.
-- Concurrent forks (fork type): ALL contacts go down ALL paths simultaneously. Use this language ONLY for fork type.
-- Wait + Goal: describe BOTH outcomes — goal achieved (exits wait early) and goal not achieved (continues after expiry). This is NOT a fork.
-
-=== WAIT STEPS ===
-- Preserve EXACT timing from narrations (field names, durations, times, timezones).
-- Forever waits with goals: "wait until one of the attached goals is achieved" (NOT "waits indefinitely").
-- Only describe waits that explicitly appear in narrations — never insert or infer waits.
-
-=== END MODES ===
-- "end" = stays on map, eligible for goals
-- "exit" = fully removed
-- "move_to_automation" = exits and enrolls in target
-- Never say "the automation ends" generically — always specify consequences.
-
-=== GOALS ===
-- ANY active contact anywhere in the automation is redirected when the goal fires (jump-back mechanic).
-- ALWAYS include the specific goal event type AND entity name from the narration.
-
-=== GOTO ===
-- When a narration contains "they are routed via GoTo into Trigger N's path..." — copy that sentence VERBATIM.
-- Upstream goto = loop. Cross-references use italic: *Trigger N - Name*.
-`;
-
-// ---------------------------------------------------------------------------
-// Three wrapper prompts
-// ---------------------------------------------------------------------------
-
-const NON_TIERED_PROMPT = `You summarize Ontraport automations. Output JSON: { "intent": "...", "behavioral_summary": "..." }
-
-Use the Structural Overview to understand the automation's shape. Use the Chunk Narrations for accurate details. The narrations are the source of truth.
-
-=== INTENT ===
-One line per trigger path. Format: "Trigger N: what happens on this path."
-- Separate lines with "\\n". Do NOT write a single paragraph.
-- Do NOT include the trigger name/label after "Trigger N".
-- Summarize action categories generically (e.g., "receive emails", "are assigned a task").
-- Condition forks: produce ONE "Trigger N:" line covering both outcomes, not a separate line per branch.
-
-=== BEHAVIORAL SUMMARY ===
-Polished prose per trigger path. Bold header per section: "**Trigger N - Name**" (use exact trigger headers from input).
-- "\\n\\n" between sections. No sub-headers or bullet points within sections.
-- Blank line before each major branch point.
-
-${SYNTHESIS_RULES}`;
-
-const TIER1_PROMPT = `You describe a single trigger path within an Ontraport automation. Output JSON: { "behavioral_description": "..." }
-
-Write a polished prose description of this trigger path. The chunk narrations are the source of truth.
-Do NOT include section headers or bullet points — write flowing prose.
-Do NOT include raw node IDs, chunk IDs, or technical identifiers.
-
-${SYNTHESIS_RULES}`;
-
-const TIER2_PROMPT = `You assemble pre-written per-trigger-path descriptions into a complete automation summary. Output JSON: { "intent": "...", "behavioral_summary": "..." }
-
-You are given pre-written behavioral descriptions for each trigger path. Your job is to:
-1. Assemble them into a cohesive behavioral_summary with bold headers: "**Trigger N - Name**"
-2. Generate a concise intent summary (one line per trigger, format: "Trigger N: what happens")
-
-Preserve the accuracy and detail of each per-trigger description. "\\n\\n" between sections.
-
-${SYNTHESIS_RULES}`;
+// Prompts are loaded from the database at runtime via prompt-loader.
+// The editable keys are: synthesis_rules, synth_non_tiered, synth_tier1, synth_tier2.
+// Each of synth_* may contain {{synthesis_rules}}, which is substituted by getResolvedPrompt.
 
 // ---------------------------------------------------------------------------
 // Helper: resolveEventLabel
@@ -696,10 +617,11 @@ async function synthesizeTriggerGroup(
   const llmStart = Date.now();
   let description: string;
   try {
+    const tier1Prompt = await getResolvedPrompt("synth_tier1");
     const result = await askLLMJsonWithRecord<{
       behavioral_description: string;
     }>(
-      TIER1_PROMPT,
+      tier1Prompt,
       userPrompt,
       { maxTokens: 4096, temperature: 0.3 },
       group.triggerChunk.id,
@@ -770,11 +692,12 @@ async function synthesizeTiered(
 
   let layers: SemanticLayers;
   try {
+    const tier2Prompt = await getResolvedPrompt("synth_tier2");
     const result = await askLLMJsonWithRecord<{
       intent: string;
       behavioral_summary: string;
     }>(
-      TIER2_PROMPT,
+      tier2Prompt,
       assemblyPrompt,
       { maxTokens: 16384, temperature: 0.3 },
       "tier2-assembly",
@@ -857,11 +780,12 @@ export async function synthesize(
 
   let layers: SemanticLayers;
   try {
+    const nonTieredPrompt = await getResolvedPrompt("synth_non_tiered");
     const result = await askLLMJsonWithRecord<{
       intent: string;
       behavioral_summary: string;
     }>(
-      NON_TIERED_PROMPT,
+      nonTieredPrompt,
       userPrompt,
       { maxTokens: 8192, temperature: 0.3 },
       "non-tiered",

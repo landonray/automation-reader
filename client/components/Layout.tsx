@@ -6,6 +6,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { accounts, selectedAccountId, setSelectedAccountId, currentSuite } = useAppContext();
   const location = useLocation();
   const isHome = location.pathname === "/";
+  const isPromptsPage = location.pathname.startsWith("/prompts");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -14,7 +15,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           Reader Workbench
         </Link>
 
-        {accounts.length > 0 && (
+        {accounts.length > 0 && !isPromptsPage && (
           <>
             <span className="text-gray-300">|</span>
             <select
@@ -29,7 +30,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </>
         )}
 
-        {currentSuite && !isHome && (
+        {currentSuite && !isHome && !isPromptsPage && (
           <>
             <span className="text-gray-300">/</span>
             <Link
@@ -40,6 +41,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           </>
         )}
+
+        <div className="ml-auto">
+          <Link
+            to="/prompts"
+            className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
+              isPromptsPage
+                ? "bg-blue-50 text-blue-700"
+                : "text-gray-600 hover:text-blue-700 hover:bg-gray-100"
+            }`}
+          >
+            Prompts
+          </Link>
+        </div>
       </header>
       <main className="p-6">{children}</main>
     </div>
