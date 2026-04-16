@@ -227,7 +227,7 @@ function checkTriggerCoverage(layers: SemanticLayers, chunks: Chunk[]): Validati
     if (!intentText.includes(triggerLabel)) {
       issues.push({
         rule: "missing_trigger_in_intent",
-        severity: "warning",
+        severity: "error",
         message: `Trigger ${i + 1} (${triggerChunks[i].id}) has no corresponding "Trigger ${i + 1}:" line in intent`,
       });
     }
@@ -246,7 +246,7 @@ function checkEntityCoverage(layers: SemanticLayers, chunks: Chunk[]): Validatio
       if (entityName && entityName.length > 2 && !entityName.startsWith("mud-") && !summaryLower.includes(entityName)) {
         issues.push({
           rule: "entity_missing_from_summary",
-          severity: "warning",
+          severity: "error",
           message: `Entity "${entity}" mentioned in chunk ${chunk.id} narration does not appear in behavioral summary`,
         });
       }
@@ -263,9 +263,20 @@ function checkConditionForkBranches(chunks: Chunk[]): ValidationIssue[] {
     if (chunk.sub_chunks.length < 2) {
       issues.push({
         rule: "condition_fork_missing_branch",
-        severity: "warning",
+        severity: "error",
         message: `Condition fork ${chunk.id} has fewer than 2 branches — both yes/no paths should be described`,
       });
+    }
+
+    for (const subId of chunk.sub_chunks) {
+      const sub = chunks.find(c => c.id === subId);
+      if (sub && (!sub.narration || sub.narration.trim().length === 0)) {
+        issues.push({
+          rule: "condition_fork_unnarrated_branch",
+          severity: "error",
+          message: `Condition fork ${chunk.id} has branch ${subId} (${sub.branch_label || "unknown"}) with no narration`,
+        });
+      }
     }
   }
   return issues;
@@ -277,12 +288,37 @@ function checkWaitGoalBothOutcomes(layers: SemanticLayers, chunks: Chunk[]): Val
 
   for (const chunk of chunks) {
     if (chunk.fork_type !== "wait_goal") continue;
+
     if (summaryLower.includes("waits indefinitely") && chunk.sub_chunks.length > 0) {
       issues.push({
         rule: "wait_goal_says_indefinitely",
-        severity: "warning",
+        severity: "error",
         message: `Wait+Goal chunk ${chunk.id} has goals but summary says "waits indefinitely"`,
       });
+    }
+
+    if (chunk.sub_chunks.length >= 2) {
+      const goalAchievedSub = chunks.find(c =>
+        chunk.sub_chunks.includes(c.id) && c.branch_label === "goal_achieved"
+      );
+      const proceedSub = chunks.find(c =>
+        chunk.sub_chunks.includes(c.id) && c.branch_label !== "goal_achieved"
+      );
+
+      if (goalAchievedSub && (!goalAchievedSub.narration || goalAchievedSub.narration.trim().length === 0)) {
+        issues.push({
+          rule: "wait_goal_missing_achieved_narration",
+          severity: "error",
+          message: `Wait+Goal ${chunk.id} has goal_achieved branch but it has no narration`,
+        });
+      }
+      if (proceedSub && (!proceedSub.narration || proceedSub.narration.trim().length === 0)) {
+        issues.push({
+          rule: "wait_goal_missing_proceed_narration",
+          severity: "error",
+          message: `Wait+Goal ${chunk.id} has proceed branch but it has no narration`,
+        });
+      }
     }
   }
   return issues;
@@ -300,7 +336,7 @@ function checkNoConcurrentLanguageForConditions(layers: SemanticLayers, chunks: 
     if (summary.toLowerCase().includes(phrase)) {
       issues.push({
         rule: "concurrent_language_for_condition",
-        severity: "warning",
+        severity: "error",
         message: `Behavioral summary uses concurrent language ("${phrase}") but automation has condition forks (which are exclusive, not concurrent)`,
       });
     }
@@ -371,7 +407,13 @@ export function getSynthesisIssues(issues: ValidationIssue[]): ValidationIssue[]
 }
 
 export function getNarrationIssues(issues: ValidationIssue[]): ValidationIssue[] {
-  return issues.filter(i => i.rule === "empty_narration");
+  const narrationRules = new Set([
+    "empty_narration",
+    "condition_fork_unnarrated_branch",
+    "wait_goal_missing_achieved_narration",
+    "wait_goal_missing_proceed_narration",
+  ]);
+  return issues.filter(i => narrationRules.has(i.rule));
 }
 
 export function getChunksNeedingRenarration(issues: ValidationIssue[]): string[] {
