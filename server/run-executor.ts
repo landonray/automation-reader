@@ -35,7 +35,7 @@ export async function executeRun(runId: string): Promise<void> {
       .update(runs)
       .set({ status: "completed", completedAt: new Date() })
       .where(eq(runs.id, runId));
-    notifyRunProgress(runId, "completed", { runId, total: 0 });
+    notifyRunProgress(runId, "run_completed", { runId, total: 0 });
     return;
   }
 
@@ -59,21 +59,21 @@ export async function executeRun(runId: string): Promise<void> {
   const headers = ontraportHeaders({ appId: account.appId, apiKey: account.apiKey });
   const total = cases.length;
 
-  notifyRunProgress(runId, "started", { runId, total });
+  notifyRunProgress(runId, "run_started", { runId, total });
 
   // 5. Process each test case sequentially
+  try {
   for (let i = 0; i < cases.length; i++) {
     const tc = cases[i];
     const result = resultByTestCase.get(tc.id);
     if (!result) continue;
 
-    notifyRunProgress(runId, "progress", {
+    notifyRunProgress(runId, "result_started", {
       runId,
       index: i,
       total,
       testCaseId: tc.id,
       automationName: tc.automationName,
-      status: "running",
     });
 
     try {
@@ -120,13 +120,12 @@ export async function executeRun(runId: string): Promise<void> {
         );
       }
 
-      notifyRunProgress(runId, "progress", {
+      notifyRunProgress(runId, "result_completed", {
         runId,
         index: i,
         total,
         testCaseId: tc.id,
         automationName: tc.automationName,
-        status: "completed",
         resultId: result.id,
       });
     } catch (err: any) {
@@ -139,13 +138,12 @@ export async function executeRun(runId: string): Promise<void> {
         })
         .where(eq(runResults.id, result.id));
 
-      notifyRunProgress(runId, "progress", {
+      notifyRunProgress(runId, "result_failed", {
         runId,
         index: i,
         total,
         testCaseId: tc.id,
         automationName: tc.automationName,
-        status: "failed",
         error: err.message,
       });
     }
@@ -157,5 +155,17 @@ export async function executeRun(runId: string): Promise<void> {
     .set({ status: "completed", completedAt: new Date() })
     .where(eq(runs.id, runId));
 
-  notifyRunProgress(runId, "completed", { runId, total });
+  notifyRunProgress(runId, "run_completed", { runId, total });
+  } catch (outerErr: any) {
+    // Unexpected crash — mark the entire run as failed
+    await db
+      .update(runs)
+      .set({ status: "failed", completedAt: new Date() })
+      .where(eq(runs.id, runId));
+
+    notifyRunProgress(runId, "run_failed", {
+      runId,
+      error: outerErr.message ?? "Unexpected error during run execution",
+    });
+  }
 }

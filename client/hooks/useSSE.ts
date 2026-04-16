@@ -18,6 +18,7 @@ export function useSSE(url: string | null) {
         // ignore malformed events
       }
     };
+    source.addEventListener("run_started", handler);
     source.addEventListener("result_started", handler);
     source.addEventListener("result_completed", handler);
     source.addEventListener("result_failed", handler);
