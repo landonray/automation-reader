@@ -17,7 +17,7 @@ app.use("/api", notesRouter);
 app.use("/api", llmCallsRouter);
 app.use("/api", promptsRouter);
 
-const PORT = Number(process.env.PORT) || 5000;
+const PORT = Number(process.env.PORT) || 3002;
 
 if (process.env.NODE_ENV === "production") {
   // Serve static files from Vite build output
