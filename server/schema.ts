@@ -82,6 +82,27 @@ export const notes = pgTable("notes", {
   check("chk_notes_layer", sql`${t.layer} IN ('intent', 'behavioral_summary', 'node_details') OR ${t.layer} IS NULL`),
 ]);
 
+export const prompts = pgTable("prompts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  currentVersionId: uuid("current_version_id"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const promptVersions = pgTable("prompt_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  promptId: uuid("prompt_id").notNull().references(() => prompts.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  content: text("content").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_prompt_versions_prompt").on(t.promptId),
+  uniqueIndex("uq_prompt_versions_prompt_version").on(t.promptId, t.version),
+]);
+
 export const llmCalls = pgTable("llm_calls", {
   id: uuid("id").primaryKey().defaultRandom(),
   runResultId: uuid("run_result_id").notNull().references(() => runResults.id, { onDelete: "cascade" }),

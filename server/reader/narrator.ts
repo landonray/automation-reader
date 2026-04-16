@@ -29,6 +29,7 @@ import {
   buildRegistryContext,
   buildChunkPrompt,
 } from "./narrator-prompt.js";
+import { getPromptContent } from "./prompt-loader.js";
 
 export { findGotoTargetDescription } from "./narrator-goto.js";
 
@@ -550,8 +551,9 @@ async function narrateOneChunk(
 
   const isComplex = chunk.is_fork_parent || chunk.node_details.length > 4 || chunk.sub_chunks.length > 0;
   const maxTokens = isComplex ? 2048 : 1024;
+  const systemPrompt = await getPromptContent("narrator_system");
   const messages: Array<{ role: "system" | "user"; content: string }> = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: systemPrompt },
     { role: "user", content: fullPrompt },
   ];
 
@@ -566,7 +568,7 @@ async function narrateOneChunk(
   llmRecords.push({
     stage: "narrator",
     chunkId: chunk.id,
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt,
     userPrompt: fullPrompt,
     response: narration,
     finishReason,
@@ -588,7 +590,7 @@ async function narrateOneChunk(
     llmRecords.push({
       stage: "narrator",
       chunkId: chunk.id,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt,
       userPrompt: fullPrompt,
       response: retryNarration,
       finishReason: retryFinishReason,
