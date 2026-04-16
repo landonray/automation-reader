@@ -23,7 +23,7 @@ export const api = {
     get: (id: string) => request<any>(`/api/suites/${id}`),
     create: (data: { accountId: string; name: string }) =>
       request<any>("/api/suites", { method: "POST", body: JSON.stringify(data) }),
-    addTestCases: (suiteId: string, automationIds: string[]) =>
+    addTestCases: (suiteId: string, automationIds: Array<{ id: string; name: string; nodeCount?: number }>) =>
       request<any>(`/api/suites/${suiteId}/test-cases`, { method: "POST", body: JSON.stringify({ automationIds }) }),
     removeTestCase: (id: string) =>
       request<any>(`/api/test-cases/${id}`, { method: "DELETE" }),

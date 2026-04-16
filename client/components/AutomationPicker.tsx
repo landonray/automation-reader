@@ -33,10 +33,14 @@ export function AutomationPicker({ accountId, suiteId, existingAutomationIds, on
   const handleAdd = async () => {
     setAdding(true);
     try {
-      const testCases = await api.suites.addTestCases(suiteId, [...selected]);
+      const payload = automations
+        .filter(a => selected.has(a.id))
+        .map(a => ({ id: a.id, name: a.name, nodeCount: a.nodeCount }));
+      const testCases = await api.suites.addTestCases(suiteId, payload);
       onAdd(testCases);
     } catch (e) {
       console.error(e);
+      alert(`Failed to add automations: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setAdding(false);
     }
