@@ -53,8 +53,16 @@ function parseCampaignData(rawData: any): { campaignData: CampaignData; rawForPu
       }
     }
 
-    const nodes = campaign?.nodes || campaign?.elements?.nodes || [];
-    const edges = campaign?.edges || campaign?.elements?.edges || [];
+    const nodes =
+      automationObj.nodes ||
+      campaign?.nodes ||
+      campaign?.elements?.nodes ||
+      [];
+    const edges =
+      automationObj.edges ||
+      campaign?.edges ||
+      campaign?.elements?.edges ||
+      [];
 
     return {
       campaignData: {
