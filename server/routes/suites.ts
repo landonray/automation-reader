@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "../db.js";
-import { accounts, testSuites, testCases } from "../schema.js";
+import { accounts, testSuites, testCases, runs } from "../schema.js";
 import { fetchAutomationJson } from "../ontraport.js";
 
 const router = Router();
@@ -43,7 +43,30 @@ router.get("/suites", async (req, res) => {
       .from(testSuites)
       .where(eq(testSuites.accountId, account_id as string))
       .orderBy(testSuites.createdAt);
-    return res.json(rows);
+
+    const enriched = await Promise.all(
+      rows.map(async (suite) => {
+        const [countResult] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(testCases)
+          .where(eq(testCases.suiteId, suite.id));
+
+        const [latestRun] = await db
+          .select({ startedAt: runs.startedAt, status: runs.status })
+          .from(runs)
+          .where(eq(runs.suiteId, suite.id))
+          .orderBy(desc(runs.startedAt))
+          .limit(1);
+
+        return {
+          ...suite,
+          automationCount: countResult?.count ?? 0,
+          lastRunDate: latestRun?.startedAt ?? null,
+          lastRunStatus: latestRun?.status ?? null,
+        };
+      }),
+    );
+    return res.json(enriched);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
