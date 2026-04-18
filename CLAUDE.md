@@ -12,7 +12,16 @@ I am a product leader, not a developer. I understand architecture and product de
 - Database: Neon Postgres via DATABASE_URL environment variable — never create a local or alternative database
 - Auth: Google OAuth via environment variables — never implement a different auth system
 - All secrets come from environment variables — never hardcode credentials
-- Dev server port: 3010 (front end and API both served from this port). Port 3000 is often taken by another project on this machine, so always start Automation-Reader on 3010.
+
+# Server and Port Management
+
+## This Project's Assigned Ports
+- **Backend (API):** 3002 (set in `.env` as `PORT`)
+- **Frontend (Vite dev server):** 5175 (set in `.env` as `VITE_PORT`)
+
+These ports are pinned. Do not change them casually — other projects on this machine are assigned different ports to avoid conflicts. If you need to change them, update `.env` AND this CLAUDE.md together.
+
+**Never kill servers belonging to other projects.** You may restart this project's servers on ports 3002 and 5175, but leave anything on other ports alone.
 
 # How to Start a Session
 - Read this CLAUDE.md fully before doing anything
